@@ -1,0 +1,69 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Éco-compteurs de Montpellier",
+        "description": "Choisissez les compteurs à suivre. Seuls les compteurs ayant publié des données ces 7 derniers jours sont proposés, triés par distance à votre domicile. Les données sont publiées avec 8 à 30 h de retard.",
+        "data": {
+          "counters": "Compteurs",
+          "backfill_days": "Historique à importer"
+        },
+        "data_description": {
+          "counters": "Un appareil et trois capteurs seront créés par compteur.",
+          "backfill_days": "Nombre de jours de comptages horaires importés dans les statistiques lors du premier chargement."
+        }
+      }
+    },
+    "error": {
+      "no_counter": "Sélectionnez au moins un compteur."
+    },
+    "abort": {
+      "cannot_connect": "Impossible de joindre le portail API de Montpellier.",
+      "single_instance_allowed": "L'intégration est déjà configurée ; modifiez ses options pour changer les compteurs."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Éco-compteurs de Montpellier",
+        "data": {
+          "counters": "Compteurs",
+          "backfill_days": "Historique à importer"
+        },
+        "data_description": {
+          "counters": "Un appareil et trois capteurs seront créés par compteur.",
+          "backfill_days": "Nombre de jours de comptages horaires importés dans les statistiques lors du premier chargement."
+        }
+      }
+    },
+    "error": {
+      "no_counter": "Sélectionnez au moins un compteur."
+    },
+    "abort": {
+      "cannot_connect": "Impossible de joindre le portail API de Montpellier."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_complete_day": {
+        "name": "Dernier jour complet",
+        "state_attributes": {
+          "date": {
+            "name": "Date"
+          }
+        }
+      },
+      "last_hour": {
+        "name": "Dernière heure publiée",
+        "state_attributes": {
+          "observed_at": {
+            "name": "Heure observée"
+          }
+        }
+      },
+      "last_observed": {
+        "name": "Dernière donnée"
+      }
+    }
+  }
+}

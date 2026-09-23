@@ -1,0 +1,97 @@
+[
+ {
+  "id": "urn:ngsi-ld:EcoCounter:X2H20042632",
+  "type": [
+   "EcoCounter",
+   "TrafficFlowObserved"
+  ],
+  "location": {
+   "type": "GeoProperty",
+   "value": {
+    "type": "Point",
+    "coordinates": [
+     3.81324,
+     43.5907
+    ]
+   }
+  },
+  "laneId": {
+   "type": "Property",
+   "value": 97705885
+  },
+  "vehicleType": {
+   "type": "Property",
+   "value": "bicycle"
+  },
+  "reversedLane": {
+   "type": "Property",
+   "value": false
+  }
+ },
+ {
+  "id": "urn:ngsi-ld:EcoCounter:X2H19070220",
+  "type": [
+   "EcoCounter",
+   "TrafficFlowObserved"
+  ],
+  "name": {
+   "type": "Property",
+   "value": "Compteur Pi\u00e9ton/V\u00e9lo Berracasa"
+  },
+  "location": {
+   "type": "GeoProperty",
+   "value": {
+    "type": "Point",
+    "coordinates": [
+     3.89694,
+     43.6097
+    ]
+   }
+  },
+  "laneId": {
+   "type": "Property",
+   "value": 121403593
+  },
+  "vehicleType": {
+   "type": "Property",
+   "value": "bicycle"
+  },
+  "reversedLane": {
+   "type": "Property",
+   "value": false
+  }
+ },
+ {
+  "id": "urn:ngsi-ld:EcoCounter:XTH19101158",
+  "type": [
+   "EcoCounter",
+   "TrafficFlowObserved"
+  ],
+  "name": {
+   "type": "Property",
+   "value": "Compteur V\u00e9lo Tanneurs"
+  },
+  "location": {
+   "type": "GeoProperty",
+   "value": {
+    "type": "Point",
+    "coordinates": [
+     3.874408,
+     43.61621
+    ]
+   }
+  },
+  "laneId": {
+   "type": "Property",
+   "value": 188609530
+  },
+  "vehicleType": {
+   "type": "Property",
+   "value": "bicycle"
+  },
+  "reversedLane": {
+   "type": "Property",
+   "value": false
+  }
+ }
+]

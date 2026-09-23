@@ -1,0 +1,1 @@
+[{"id":"urn:ngsi-ld:EcoCounter:X2H19070220","type":["EcoCounter","TrafficFlowObserved"],"intensity":{"type":"Property","values":[[39,"2026-09-22T23:00:00Z"]]}},{"id":"urn:ngsi-ld:EcoCounter:XTH19101158","type":["EcoCounter","TrafficFlowObserved"],"intensity":{"type":"Property","values":[[3,"2026-09-22T04:00:00Z"]]}}]

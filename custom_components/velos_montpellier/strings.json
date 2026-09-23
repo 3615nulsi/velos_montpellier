@@ -1,0 +1,69 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Montpellier bike counters",
+        "description": "Pick the counters to track. Only counters that published data in the last 7 days are listed, sorted by distance to your home. Data is published 8 to 30 hours late.",
+        "data": {
+          "counters": "Counters",
+          "backfill_days": "History to import"
+        },
+        "data_description": {
+          "counters": "One device and three sensors are created per counter.",
+          "backfill_days": "Number of days of hourly counts imported into statistics on first load."
+        }
+      }
+    },
+    "error": {
+      "no_counter": "Select at least one counter."
+    },
+    "abort": {
+      "cannot_connect": "Unable to reach the Montpellier API portal.",
+      "single_instance_allowed": "Already configured; edit its options to change counters."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Montpellier bike counters",
+        "data": {
+          "counters": "Counters",
+          "backfill_days": "History to import"
+        },
+        "data_description": {
+          "counters": "One device and three sensors are created per counter.",
+          "backfill_days": "Number of days of hourly counts imported into statistics on first load."
+        }
+      }
+    },
+    "error": {
+      "no_counter": "Select at least one counter."
+    },
+    "abort": {
+      "cannot_connect": "Unable to reach the Montpellier API portal."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "last_complete_day": {
+        "name": "Last complete day",
+        "state_attributes": {
+          "date": {
+            "name": "Date"
+          }
+        }
+      },
+      "last_hour": {
+        "name": "Last published hour",
+        "state_attributes": {
+          "observed_at": {
+            "name": "Observed hour"
+          }
+        }
+      },
+      "last_observed": {
+        "name": "Latest data"
+      }
+    }
+  }
+}

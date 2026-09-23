@@ -1,0 +1,14 @@
+{
+  "domain": "velos_montpellier",
+  "name": "Vélos Montpellier",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/TODO/velos_montpellier",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/TODO/velos_montpellier/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
