@@ -42,7 +42,8 @@ Comptages des éco-compteurs vélo/piéton de Montpellier Méditerranée Métrop
 ## Installation
 
 Copier `custom_components/velos_montpellier` dans le dossier `config/custom_components`
-de Home Assistant (ou ajouter ce dépôt comme dépôt personnalisé HACS), redémarrer, puis
+de Home Assistant (ou ajouter `https://github.com/3615nulsi/velos_montpellier` comme dépôt personnalisé
+HACS, catégorie *Intégration*), redémarrer, puis
 *Paramètres → Appareils et services → Ajouter une intégration → Vélos Montpellier*.
 
 ## Développement
@@ -63,7 +64,6 @@ Les tests utilisent des réponses réelles de l'API enregistrées dans `tests/fi
 
 ## Pistes / TODO
 
-- Remplacer les `TODO` du `manifest.json` (dépôt GitHub, `codeowners`).
 - Relier la statistique d'un compteur renommé à celle de son prédécesseur (`oldVersion`).
 - Une heure publiée *après* une heure plus récente déjà importée est ignorée ;
   à surveiller sur des données réelles.
