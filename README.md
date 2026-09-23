@@ -52,26 +52,6 @@ de Home Assistant (ou ajouter `https://github.com/3615nulsi/velos_montpellier` c
 HACS, catégorie *Intégration*), redémarrer, puis
 *Paramètres → Appareils et services → Ajouter une intégration → Vélos Montpellier*.
 
-## Développement
-
-```bash
-uv venv --python 3.13 .venv
-```
-
-```bash
-uv pip install --python .venv -r requirements_test.txt
-```
-
-```bash
-.venv/bin/python -m pytest
-```
-
-Les tests utilisent des réponses réelles de l'API enregistrées dans `tests/fixtures/`.
-
-L'icône (`brand/icon.png`, affichée par les versions récentes de Home Assistant, vérifié sur 2026.9) est générée depuis
-`assets/icon.svg` ; ses barres reproduisent le profil horaire réel d'une journée de
-comptage (pics du matin et du soir).
-
 ## Pistes / TODO
 
 - Relier la statistique d'un compteur renommé à celle de son prédécesseur (`oldVersion`).
