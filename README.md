@@ -1,4 +1,10 @@
+<img src="custom_components/velos_montpellier/brand/icon.png" alt="" width="96" align="right">
+
 # Vélos Montpellier — intégration Home Assistant
+
+[![Tests](https://github.com/3615nulsi/velos_montpellier/actions/workflows/tests.yml/badge.svg)](https://github.com/3615nulsi/velos_montpellier/actions/workflows/tests.yml)
+[![Validation](https://github.com/3615nulsi/velos_montpellier/actions/workflows/validate.yml/badge.svg)](https://github.com/3615nulsi/velos_montpellier/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-d%C3%A9p%C3%B4t%20personnalis%C3%A9-41BDF5.svg)](https://hacs.xyz/docs/faq/custom_repositories/)
 
 Comptages des éco-compteurs vélo/piéton de Montpellier Méditerranée Métropole, via le
 [portail API open data](https://portail-api.montpellier.fr/) (NGSI-LD, sans clé).
@@ -61,6 +67,10 @@ uv pip install --python .venv -r requirements_test.txt
 ```
 
 Les tests utilisent des réponses réelles de l'API enregistrées dans `tests/fixtures/`.
+
+L'icône (`brand/icon.png`, affichée par les versions récentes de Home Assistant, vérifié sur 2026.9) est générée depuis
+`assets/icon.svg` ; ses barres reproduisent le profil horaire réel d'une journée de
+comptage (pics du matin et du soir).
 
 ## Pistes / TODO
 
