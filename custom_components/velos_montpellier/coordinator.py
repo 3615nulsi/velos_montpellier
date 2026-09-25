@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -48,18 +48,32 @@ class CounterData:
 
     @property
     def last_complete_day(self) -> tuple[date, int] | None:
-        """(jour, total) du dernier jour local dont l'heure 23h est publiée."""
+        """(jour, total) du dernier jour local dont toutes les heures sont publiées.
+
+        La source perd parfois un envoi journalier entier : un jour peut n'avoir
+        que ses dernières heures (ex. 22h-23h), sans être complet pour autant.
+        """
         per_day: dict[date, int] = {}
-        complete: set[date] = set()
+        hours: dict[date, set[int]] = {}
         for ts, value in self.hourly.items():
             local = ts.astimezone(DATA_TZ)
             per_day[local.date()] = per_day.get(local.date(), 0) + value
-            if local.hour == 23:
-                complete.add(local.date())
+            hours.setdefault(local.date(), set()).add(local.hour)
+        complete = [day for day, seen in hours.items() if _day_hours(day) <= seen]
         if not complete:
             return None
         day = max(complete)
         return day, per_day[day]
+
+
+def _day_hours(day: date) -> set[int]:
+    """Heures locales existant ce jour-là (sans 02h le jour du passage à l'été)."""
+    start = datetime.combine(day, time(), DATA_TZ).astimezone(UTC)
+    end = datetime.combine(day + timedelta(days=1), time(), DATA_TZ).astimezone(UTC)
+    return {
+        (start + timedelta(hours=i)).astimezone(DATA_TZ).hour
+        for i in range(int((end - start) / timedelta(hours=1)))
+    }
 
 
 class VelosMontpellierCoordinator(DataUpdateCoordinator[dict[str, CounterData]]):

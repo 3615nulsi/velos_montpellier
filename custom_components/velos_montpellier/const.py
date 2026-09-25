@@ -25,8 +25,9 @@ MAX_BACKFILL_DAYS = 365
 
 UPDATE_INTERVAL = timedelta(minutes=30)
 # Fenêtre relue à chaque mise à jour : couvre le retard de publication (8 à 30 h)
-# et permet de recalculer le dernier jour complet.
-FETCH_WINDOW = timedelta(days=3)
+# et permet de recalculer le dernier jour complet, y compris quand la source a
+# perdu un envoi journalier. Avec le jour en cours, elle tient dans une requête.
+FETCH_WINDOW = timedelta(days=5)
 # Taille des tranches de requêtes lors du rattrapage de l'historique.
 FETCH_CHUNK = timedelta(days=7)
 # Un compteur sans donnée depuis ce délai est considéré inactif (non proposé).

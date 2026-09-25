@@ -17,12 +17,12 @@ Comptages des éco-compteurs vélo/piéton de Montpellier Méditerranée Métrop
 - **Configuration** : liste des compteurs ayant publié dans les 7 derniers jours, triés
   par distance au domicile ; sélection multiple. Modifiable ensuite dans les options.
 - **Mise à jour** : toutes les 30 min, une seule requête pour tous les compteurs suivis
-  (fenêtre glissante de 3 jours).
+  (fenêtre glissante de 5 jours).
 - **Par compteur** (un appareil chacun) :
 
   | Capteur | Valeur | Attributs |
   |---|---|---|
-  | Dernier jour complet | Total de la dernière journée dont l'heure 23h est publiée | `date`, coordonnées |
+  | Dernier jour complet | Total de la dernière journée dont les 24 heures sont publiées | `date`, coordonnées |
   | Dernière heure publiée | Passages pendant la dernière heure disponible | `observed_at` |
   | Dernière donnée *(diagnostic)* | Horodatage de la dernière heure publiée | |
 
@@ -38,6 +38,10 @@ Comptages des éco-compteurs vélo/piéton de Montpellier Méditerranée Métrop
   00h–23h correspond au total journalier officiel). La source publie 24 valeurs par jour
   même lors des changements d'heure : on range par heure UTC en additionnant les
   collisions.
+- Chaque compteur envoie ses données par paquets de 24 h, coupés à une heure qui lui
+  est propre (00h, 02h, 05h, 22h…). Tous les 4 à 5 jours, un paquet est perdu et
+  n'est jamais republié : certaines journées restent partielles. Elles sont ignorées
+  par le capteur *Dernier jour complet* ; les statistiques gardent les heures reçues.
 - Sur les 70 compteurs déclarés, environ 18 n'émettent plus (remplacés ou hors service).
   Les remplaçants portent une relation `oldVersion`.
 - Certains compteurs n'ont pas de nom : on affiche « Compteur <numéro de série> ».
