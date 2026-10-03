@@ -9,7 +9,7 @@
 Fréquentation des pistes cyclables de Montpellier Méditerranée Métropole : total
 journalier de passages de chaque éco-compteur, tiré des
 [fichiers open data](https://data.montpellier3m.fr/dataset/comptages-velo-et-pieton-issus-des-compteurs-de-velo)
-de la Métropole (même source que [compteurs.velocite-montpellier.fr](https://compteurs.velocite-montpellier.fr/)).
+de la Métropole.
 
 > ⚠️ Les données ne sont **pas** temps réel : le total d'une journée est publié le
 > lendemain soir.
