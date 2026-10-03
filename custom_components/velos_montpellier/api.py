@@ -1,19 +1,23 @@
-"""Client pour le portail API NGSI-LD de Montpellier Méditerranée Métropole.
+"""Accès aux données des éco-compteurs de Montpellier Méditerranée Métropole.
+
+- Portail API NGSI-LD : liste des compteurs et date de leur dernière mesure.
+- Fichiers open data : totaux journaliers, plus complets que les comptages horaires
+  de l'API (qui perd des envois entiers, environ un jour sur trois).
 
 Ce module ne dépend que d'aiohttp afin de pouvoir être testé hors de Home Assistant.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import date, datetime
 import logging
+import re
 from typing import Any
 
 import aiohttp
 
-from .const import API_HOSTS, DATA_TZ, ENTITY_TYPE, FETCH_CHUNK, URN_PREFIX
+from .const import API_HOSTS, DATA_TZ, ENTITY_TYPE, OPEN_DATA_URL, URN_PREFIX
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +60,25 @@ def parse_observed_at(value: str) -> datetime:
     """
     naive = datetime.fromisoformat(value.removesuffix("Z")).replace(tzinfo=None)
     return naive.replace(tzinfo=DATA_TZ)
+
+
+# Les fichiers open data sont des objets JSON mis bout à bout, parfois collés, tronqués
+# ou à `"intensity":null` : on extrait directement le total et le jour de chaque objet.
+_DAILY_RE = re.compile(
+    r'"intensity":(\d+),"laneId":-?\d+,"dateObserved":"(\d{4}-\d{2}-\d{2})T'
+)
+
+
+def parse_daily(text: str) -> dict[date, int]:
+    """Totaux journaliers {jour local: passages} d'un fichier open data.
+
+    Un même jour apparaît parfois deux fois : la seconde valeur est un
+    enregistrement parasite (identique d'un compteur à l'autre), on garde la première.
+    """
+    days: dict[date, int] = {}
+    for value, day in _DAILY_RE.findall(text):
+        days.setdefault(date.fromisoformat(day), int(value))
+    return days
 
 
 def format_time_at(value: datetime) -> str:
@@ -145,43 +168,21 @@ class MontpellierApiClient:
                 result[entity["id"]] = max(parse_observed_at(t) for _, t in values)
         return result
 
-    async def async_get_hourly(
-        self, urns: Iterable[str], start: datetime, end: datetime
-    ) -> dict[str, dict[datetime, int]]:
-        """Comptages horaires {urn: {début d'heure UTC: nombre}} sur [start, end[.
+    async def async_get_daily(
+        self, serial: str, *, archive: bool = False
+    ) -> dict[date, int]:
+        """Totaux journaliers d'un compteur : derniers jours, ou tout l'historique.
 
-        La période est découpée en tranches pour limiter la taille des réponses.
+        Un fichier absent (404) ou en cours de réécriture (vide) ne donne aucun jour.
         """
-        urns = list(urns)
-        result: dict[str, dict[datetime, int]] = {urn: {} for urn in urns}
-        if not urns:
-            return result
-        chunk_start = start
-        while chunk_start < end:
-            chunk_end = min(chunk_start + FETCH_CHUNK, end)
-            entities = await self._get(
-                "/ngsi-ld/v1/temporal/entities",
-                {
-                    "type": ENTITY_TYPE,
-                    "id": ",".join(urns),
-                    "timerel": "between",
-                    "timeAt": format_time_at(chunk_start),
-                    "endTimeAt": format_time_at(chunk_end),
-                    "format": "temporalValues",
-                    "limit": _PAGE_SIZE,
-                },
-            )
-            for entity in entities:
-                chunk_hours: dict[datetime, int] = {}
-                for value, observed_at in (entity.get("intensity") or {}).get(
-                    "values"
-                ) or []:
-                    # La source ignore les changements d'heure (24 valeurs par
-                    # jour, y compris un "02:00" inexistant fin mars) : on range
-                    # par heure UTC et on additionne les collisions.
-                    ts = parse_observed_at(observed_at).astimezone(UTC)
-                    chunk_hours[ts] = chunk_hours.get(ts, 0) + int(value)
-                # Une heure en bordure de deux tranches est simplement écrasée.
-                result.setdefault(entity["id"], {}).update(chunk_hours)
-            chunk_start = chunk_end
-        return result
+        url = OPEN_DATA_URL.format(serial=serial, suffix="_archive" if archive else "")
+        try:
+            async with self._session.get(url, timeout=_TIMEOUT) as resp:
+                if resp.status == 404:
+                    _LOGGER.debug("Pas de fichier open data pour %s", serial)
+                    return {}
+                resp.raise_for_status()
+                text = await resp.text(errors="replace")
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise MontpellierApiError(f"Open data {serial} : {err}") from err
+        return parse_daily(text)

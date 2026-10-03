@@ -6,7 +6,8 @@ Seule la dernière version publiée reçoit des correctifs de sécurité.
 
 | Version | Prise en charge |
 |---|---|
-| 0.1.x | ✅ |
+| 0.2.x | ✅ |
+| 0.1.x | ❌ |
 
 ## Signaler une vulnérabilité
 

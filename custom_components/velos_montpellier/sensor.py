@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-)
-from homeassistant.const import EntityCategory
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DATA_TZ, DOMAIN
+from .const import DOMAIN
 from .coordinator import (
     CounterData,
     VelosMontpellierConfigEntry,
@@ -26,8 +20,8 @@ from .coordinator import (
 )
 from .statistics import UNIT, statistic_id
 
-# Pas de state_class : l'historique d'état daterait les valeurs à leur réception
-# (8 à 30 h trop tard). Les graphiques passent par les statistiques externes.
+# Pas de state_class : l'historique d'état daterait chaque total à sa réception
+# (le lendemain soir). Les graphiques passent par les statistiques externes.
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -39,20 +33,16 @@ class VelosSensorDescription(SensorEntityDescription):
 
 
 def _day_total(data: CounterData) -> int | None:
-    day = data.last_complete_day
+    day = data.last_day
     return day[1] if day else None
 
 
 def _day_attrs(data: CounterData) -> dict[str, Any]:
-    day = data.last_complete_day
+    day = data.last_day
     return {"date": day[0].isoformat()} if day else {}
 
 
-def _last_hour_attrs(data: CounterData) -> dict[str, Any]:
-    last = data.last_observed
-    return {"observed_at": last.astimezone(DATA_TZ).isoformat()} if last else {}
-
-
+# La clé historique `last_complete_day` est conservée pour garder les entités.
 SENSORS: tuple[VelosSensorDescription, ...] = (
     VelosSensorDescription(
         key="last_complete_day",
@@ -60,20 +50,6 @@ SENSORS: tuple[VelosSensorDescription, ...] = (
         native_unit_of_measurement=UNIT,
         value_fn=_day_total,
         attrs_fn=_day_attrs,
-    ),
-    VelosSensorDescription(
-        key="last_hour",
-        translation_key="last_hour",
-        native_unit_of_measurement=UNIT,
-        value_fn=lambda d: d.last_hour_count,
-        attrs_fn=_last_hour_attrs,
-    ),
-    VelosSensorDescription(
-        key="last_observed",
-        translation_key="last_observed",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda d: d.last_observed,
     ),
 )
 
@@ -127,7 +103,7 @@ class VelosCounterSensor(CoordinatorEntity[VelosMontpellierCoordinator], SensorE
         return super().available and self._data is not None
 
     @property
-    def native_value(self) -> int | datetime | None:
+    def native_value(self) -> int | None:
         data = self._data
         return self.entity_description.value_fn(data) if data else None
 
@@ -141,8 +117,7 @@ class VelosCounterSensor(CoordinatorEntity[VelosMontpellierCoordinator], SensorE
             **self.entity_description.attrs_fn(data),
             "statistic_id": statistic_id(counter),
         }
-        # Coordonnées sur un seul capteur par compteur, pour la carte.
-        if self.entity_description.key == "last_complete_day":
-            attrs["latitude"] = counter.latitude
-            attrs["longitude"] = counter.longitude
+        # Coordonnées, pour la carte.
+        attrs["latitude"] = counter.latitude
+        attrs["longitude"] = counter.longitude
         return attrs

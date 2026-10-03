@@ -1,14 +1,14 @@
-"""Import des comptages horaires dans les statistiques long terme de Home Assistant.
+"""Import des totaux journaliers dans les statistiques long terme de Home Assistant.
 
-Les données arrivent avec 8 à 30 h de retard : l'historique d'état d'un capteur les
-daterait au moment de leur réception. On les insère donc comme statistiques
-externes (`velos_montpellier:<numéro de série>`), avec leur véritable horodatage.
-Elles sont exploitables avec la carte « Graphique de statistiques ».
+Chaque jour est publié le lendemain soir : l'historique d'état d'un capteur le
+daterait au moment de sa réception. On l'insère donc comme statistique externe
+(`velos_montpellier:<numéro de série>`), datée de minuit (heure de Paris) du jour
+compté. Elle est exploitable avec la carte « Graphique de statistiques ».
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 import logging
 from typing import TYPE_CHECKING
 
@@ -41,82 +41,98 @@ def statistic_id(counter: Counter) -> str:
     return f"{DOMAIN}:{counter.serial.lower()}"
 
 
+def _start(day: date) -> datetime:
+    """Début de la journée locale."""
+    return datetime.combine(day, time(), DATA_TZ)
+
+
 async def _async_last_stat(
     hass: HomeAssistant, stat_id: str
-) -> tuple[datetime, float] | None:
-    """(début, somme cumulée) de la dernière heure déjà importée."""
+) -> tuple[date, float] | None:
+    """(jour, somme cumulée) du dernier jour déjà importé."""
     last = await get_instance(hass).async_add_executor_job(
         get_last_statistics, hass, 1, stat_id, True, {"sum"}
     )
     if not last.get(stat_id):
         return None
     row = last[stat_id][0]
-    return dt_util.utc_from_timestamp(row["start"]), row["sum"] or 0.0
+    start = dt_util.utc_from_timestamp(row["start"]).astimezone(DATA_TZ)
+    return start.date(), row["sum"] or 0.0
+
+
+def _rows(days: dict[date, int], total: float) -> list[StatisticData]:
+    rows: list[StatisticData] = []
+    for day in sorted(days):
+        total += days[day]
+        rows.append(StatisticData(start=_start(day), state=days[day], sum=total))
+    return rows
 
 
 async def async_update_statistics(
     hass: HomeAssistant,
     client: MontpellierApiClient,
-    data: dict[str, CounterData],
+    item: CounterData,
     *,
-    window_start: datetime,
+    full_sync: bool,
     backfill_days: int,
-) -> None:
-    """Ajoute aux statistiques les heures publiées depuis le dernier import."""
-    last_stats = {
-        urn: await _async_last_stat(hass, statistic_id(item.counter))
-        for urn, item in data.items()
-    }
+) -> dict[date, int]:
+    """Ajoute aux statistiques les jours publiés depuis le dernier import.
 
-    # Premier import (ou fenêtre récente dépassée) : on rattrape l'historique.
-    backfill_start = (dt_util.now(DATA_TZ) - timedelta(days=backfill_days)).replace(
-        hour=0, minute=0, second=0, microsecond=0
+    Avec `full_sync` (au chargement), ou s'il manque des jours, l'historique est
+    relu dans l'archive et réimporté entièrement. Retourne les jours de l'archive.
+    """
+    counter = item.counter
+    stat_id = statistic_id(counter)
+    last = await _async_last_stat(hass, stat_id)
+    last_day = last[0] if last else None
+    new_days = {d: v for d, v in item.daily.items() if last_day is None or d > last_day}
+    gap = (
+        last_day is not None
+        and bool(new_days)
+        and min(new_days) > last_day + timedelta(days=1)
     )
-    to_backfill = [
-        urn
-        for urn, last in last_stats.items()
-        if last is None or last[0] < window_start
-    ]
-    history: dict[str, dict[datetime, int]] = {}
-    if to_backfill:
-        # Inutile de relire ce qui est déjà importé (ex. après une coupure de HA).
-        fetch_start = max(
-            backfill_start,
-            min(
-                last_stats[urn][0] + timedelta(hours=1)  # type: ignore[index]
-                if last_stats[urn]
-                else backfill_start
-                for urn in to_backfill
-            ),
+
+    history: dict[date, int] = {}
+    if full_sync or gap:
+        history = await client.async_get_daily(counter.serial, archive=True)
+        # Une archive en cours de réécriture est tronquée : on ne remplace pas un
+        # historique déjà importé par une version qui s'arrête bien avant lui. La
+        # marge couvre les anciennes statistiques horaires (v0.1), en avance d'un
+        # jour ou deux ; un jour manquant sera de toute façon rattrapé (`gap`).
+        if history and (
+            last_day is None or max(history) >= last_day - timedelta(days=2)
+        ):
+            today = dt_util.now(DATA_TZ).date()
+            days = {**item.daily, **history}
+            start = min(today - timedelta(days=backfill_days), max(days))
+            days = {d: v for d, v in days.items() if d >= start}
+            _LOGGER.debug("Réimport de %d jours pour %s", len(days), stat_id)
+            # Remise à zéro : supprime aussi d'éventuelles lignes d'une ancienne
+            # version (comptages horaires) ou antérieures à la durée choisie.
+            get_instance(hass).async_clear_statistics([stat_id])
+            _async_add(hass, counter, _rows(days, 0.0))
+            return history
+        _LOGGER.debug(
+            "Archive de %s incomplète, import des seuls derniers jours", stat_id
         )
-        if fetch_start < window_start:
-            _LOGGER.debug("Rattrapage de l'historique pour %s", to_backfill)
-            history = await client.async_get_hourly(
-                to_backfill, fetch_start, window_start
-            )
 
-    for urn, item in data.items():
-        hours = {**history.get(urn, {}), **item.hourly}
-        last = last_stats[urn]
-        last_start, total = last if last else (None, 0.0)
+    if new_days:
+        _async_add(hass, counter, _rows(new_days, last[1] if last else 0.0))
+    return history
 
-        stats: list[StatisticData] = []
-        for start in sorted(hours):
-            if last_start is not None and start <= last_start:
-                continue
-            total += hours[start]
-            stats.append(StatisticData(start=start, state=hours[start], sum=total))
-        if not stats:
-            continue
 
-        metadata = StatisticMetaData(
-            mean_type=StatisticMeanType.NONE,
-            has_sum=True,
-            name=item.counter.display_name,
-            source=DOMAIN,
-            statistic_id=statistic_id(item.counter),
-            unit_class=None,
-            unit_of_measurement=UNIT,
-        )
-        _LOGGER.debug("Import de %d heures pour %s", len(stats), urn)
-        async_add_external_statistics(hass, metadata, stats)
+def _async_add(
+    hass: HomeAssistant, counter: Counter, rows: list[StatisticData]
+) -> None:
+    if not rows:
+        return
+    metadata = StatisticMetaData(
+        mean_type=StatisticMeanType.NONE,
+        has_sum=True,
+        name=counter.display_name,
+        source=DOMAIN,
+        statistic_id=statistic_id(counter),
+        unit_class=None,
+        unit_of_measurement=UNIT,
+    )
+    async_add_external_statistics(hass, metadata, rows)

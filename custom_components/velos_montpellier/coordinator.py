@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, timedelta
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -17,7 +17,7 @@ from .const import (
     DATA_TZ,
     DEFAULT_BACKFILL_DAYS,
     DOMAIN,
-    FETCH_WINDOW,
+    RECENT_DAYS,
     UPDATE_INTERVAL,
 )
 from .statistics import async_update_statistics
@@ -32,52 +32,20 @@ class CounterData:
     """Données calculées pour un compteur."""
 
     counter: Counter
-    # Comptages horaires récents, indexés par début d'heure (UTC).
-    hourly: dict[datetime, int] = field(default_factory=dict)
+    # Totaux journaliers récents, indexés par jour local.
+    daily: dict[date, int] = field(default_factory=dict)
 
     @property
-    def last_observed(self) -> datetime | None:
-        """Début de la dernière heure publiée."""
-        return max(self.hourly, default=None)
-
-    @property
-    def last_hour_count(self) -> int | None:
-        """Nombre de passages pendant la dernière heure publiée."""
-        last = self.last_observed
-        return None if last is None else self.hourly[last]
-
-    @property
-    def last_complete_day(self) -> tuple[date, int] | None:
-        """(jour, total) du dernier jour local dont toutes les heures sont publiées.
-
-        La source perd parfois un envoi journalier entier : un jour peut n'avoir
-        que ses dernières heures (ex. 22h-23h), sans être complet pour autant.
-        """
-        per_day: dict[date, int] = {}
-        hours: dict[date, set[int]] = {}
-        for ts, value in self.hourly.items():
-            local = ts.astimezone(DATA_TZ)
-            per_day[local.date()] = per_day.get(local.date(), 0) + value
-            hours.setdefault(local.date(), set()).add(local.hour)
-        complete = [day for day, seen in hours.items() if _day_hours(day) <= seen]
-        if not complete:
+    def last_day(self) -> tuple[date, int] | None:
+        """(jour, total) du dernier jour publié."""
+        if not self.daily:
             return None
-        day = max(complete)
-        return day, per_day[day]
-
-
-def _day_hours(day: date) -> set[int]:
-    """Heures locales existant ce jour-là (sans 02h le jour du passage à l'été)."""
-    start = datetime.combine(day, time(), DATA_TZ).astimezone(UTC)
-    end = datetime.combine(day + timedelta(days=1), time(), DATA_TZ).astimezone(UTC)
-    return {
-        (start + timedelta(hours=i)).astimezone(DATA_TZ).hour
-        for i in range(int((end - start) / timedelta(hours=1)))
-    }
+        day = max(self.daily)
+        return day, self.daily[day]
 
 
 class VelosMontpellierCoordinator(DataUpdateCoordinator[dict[str, CounterData]]):
-    """Récupère périodiquement les comptages horaires des compteurs suivis."""
+    """Récupère périodiquement les totaux journaliers des compteurs suivis."""
 
     config_entry: VelosMontpellierConfigEntry
 
@@ -97,35 +65,46 @@ class VelosMontpellierCoordinator(DataUpdateCoordinator[dict[str, CounterData]])
         )
         self.client = client
         self.counters = {c.urn: c for c in counters}
+        # Compteurs dont l'historique a été réimporté depuis le chargement.
+        self._synced: set[str] = set()
 
     async def _async_update_data(self) -> dict[str, CounterData]:
-        now = dt_util.now(DATA_TZ)
-        # Début de journée locale, pour que le dernier jour complet soit entier.
-        start = (now - FETCH_WINDOW).replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now + timedelta(hours=1)
-        try:
-            hourly = await self.client.async_get_hourly(self.counters, start, end)
-        except MontpellierApiError as err:
-            raise UpdateFailed(f"Erreur du portail API : {err}") from err
-
-        data = {
-            urn: CounterData(counter, hourly.get(urn, {}))
-            for urn, counter in self.counters.items()
-        }
-
+        previous = self.data or {}
         backfill_days = self.config_entry.options.get(
             CONF_BACKFILL_DAYS, DEFAULT_BACKFILL_DAYS
         )
-        try:
-            await async_update_statistics(
-                self.hass,
-                self.client,
-                data,
-                window_start=start,
-                backfill_days=backfill_days,
-            )
-        except MontpellierApiError as err:
-            # Les capteurs restent valides même si l'import d'historique échoue.
-            _LOGGER.warning("Import des statistiques reporté : %s", err)
+        oldest = dt_util.now(DATA_TZ).date() - timedelta(days=RECENT_DAYS)
 
+        data: dict[str, CounterData] = {}
+        errors: list[str] = []
+        for urn, counter in self.counters.items():
+            known = previous[urn].daily if urn in previous else {}
+            try:
+                days = await self.client.async_get_daily(counter.serial)
+            except MontpellierApiError as err:
+                errors.append(str(err))
+                days = {}
+            # Première valeur publiée conservée (cf. parse_daily).
+            item = CounterData(counter, {**days, **known})
+            try:
+                history = await async_update_statistics(
+                    self.hass,
+                    self.client,
+                    item,
+                    full_sync=urn not in self._synced,
+                    backfill_days=backfill_days,
+                )
+            except MontpellierApiError as err:
+                # Les capteurs restent valides même si l'import d'historique échoue.
+                _LOGGER.warning("Import des statistiques reporté : %s", err)
+            else:
+                self._synced.add(urn)
+                item.daily = {**history, **item.daily}
+            item.daily = {d: v for d, v in item.daily.items() if d >= oldest}
+            data[urn] = item
+
+        if errors and len(errors) == len(self.counters) and not previous:
+            raise UpdateFailed(f"Fichiers open data injoignables : {errors[0]}")
+        for err in errors:
+            _LOGGER.debug("Mise à jour incomplète : %s", err)
         return data

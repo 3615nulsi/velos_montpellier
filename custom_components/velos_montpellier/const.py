@@ -17,18 +17,22 @@ URN_PREFIX = "urn:ngsi-ld:EcoCounter:"
 # de Paris (vérifié : la somme des heures 00h-23h "Z" = total journalier officiel).
 DATA_TZ = ZoneInfo("Europe/Paris")
 
+# Totaux journaliers par compteur : `MMM_EcoCompt_<série>.json` (derniers jours) et
+# `MMM_EcoCompt_<série>_archive.json` (tout l'historique, plusieurs centaines de ko).
+OPEN_DATA_URL = (
+    "https://data.montpellier3m.fr/sites/default/files/ressources/"
+    "MMM_EcoCompt_{serial}{suffix}.json"
+)
+
 CONF_COUNTERS = "counters"
 CONF_BACKFILL_DAYS = "backfill_days"
 
-DEFAULT_BACKFILL_DAYS = 30
-MAX_BACKFILL_DAYS = 365
+DEFAULT_BACKFILL_DAYS = 365
+MAX_BACKFILL_DAYS = 3650
 
-UPDATE_INTERVAL = timedelta(minutes=30)
-# Fenêtre relue à chaque mise à jour : couvre le retard de publication (8 à 30 h)
-# et permet de recalculer le dernier jour complet, y compris quand la source a
-# perdu un envoi journalier. Avec le jour en cours, elle tient dans une requête.
-FETCH_WINDOW = timedelta(days=5)
-# Taille des tranches de requêtes lors du rattrapage de l'historique.
-FETCH_CHUNK = timedelta(days=7)
+# Les fichiers open data sont mis à jour une fois par jour, le soir (jour J à J+1).
+UPDATE_INTERVAL = timedelta(hours=1)
+# Jours conservés pour le capteur (le reste est dans les statistiques).
+RECENT_DAYS = 7
 # Un compteur sans donnée depuis ce délai est considéré inactif (non proposé).
 ACTIVE_THRESHOLD = timedelta(days=7)

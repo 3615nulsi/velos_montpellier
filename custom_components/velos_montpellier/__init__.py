@@ -6,6 +6,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import MontpellierApiClient, MontpellierApiError
@@ -13,6 +14,9 @@ from .const import CONF_COUNTERS
 from .coordinator import VelosMontpellierConfigEntry, VelosMontpellierCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+# Capteurs horaires des versions 0.1.x, retirés avec le passage aux totaux journaliers.
+_OBSOLETE_SENSORS = ("_last_hour", "_last_observed")
 
 
 def selected_counters(entry: VelosMontpellierConfigEntry) -> list[str]:
@@ -32,6 +36,11 @@ async def async_setup_entry(
 
     wanted = set(selected_counters(entry))
     counters = [c for c in all_counters if c.urn in wanted]
+
+    ent_reg = er.async_get(hass)
+    for entity in er.async_entries_for_config_entry(ent_reg, entry.entry_id):
+        if entity.unique_id.endswith(_OBSOLETE_SENSORS):
+            ent_reg.async_remove(entity.entity_id)
 
     coordinator = VelosMontpellierCoordinator(hass, entry, client, counters)
     await coordinator.async_config_entry_first_refresh()

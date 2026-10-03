@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "Montpellier bike counters",
-        "description": "Pick the counters to track. Only counters that published data in the last 7 days are listed, sorted by distance to your home. Data is published 8 to 30 hours late.",
+        "description": "Pick the counters to track. Only counters that published data in the last 7 days are listed, sorted by distance to your home. Each day's total is published the following evening.",
         "data": {
           "counters": "Counters",
           "backfill_days": "History to import"
         },
         "data_description": {
-          "counters": "One device and three sensors are created per counter.",
-          "backfill_days": "Number of days of hourly counts imported into statistics on first load."
+          "counters": "One device and one sensor (last published day total) are created per counter.",
+          "backfill_days": "Number of days of daily totals imported into statistics. History is re-read at each start."
         }
       }
     },
@@ -31,8 +31,8 @@
           "backfill_days": "History to import"
         },
         "data_description": {
-          "counters": "One device and three sensors are created per counter.",
-          "backfill_days": "Number of days of hourly counts imported into statistics on first load."
+          "counters": "One device and one sensor (last published day total) are created per counter.",
+          "backfill_days": "Number of days of daily totals imported into statistics. History is re-read at each start."
         }
       }
     },
@@ -46,23 +46,12 @@
   "entity": {
     "sensor": {
       "last_complete_day": {
-        "name": "Last complete day",
+        "name": "Last day",
         "state_attributes": {
           "date": {
             "name": "Date"
           }
         }
-      },
-      "last_hour": {
-        "name": "Last published hour",
-        "state_attributes": {
-          "observed_at": {
-            "name": "Observed hour"
-          }
-        }
-      },
-      "last_observed": {
-        "name": "Latest data"
       }
     }
   }

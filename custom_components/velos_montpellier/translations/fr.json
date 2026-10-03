@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "Éco-compteurs de Montpellier",
-        "description": "Choisissez les compteurs à suivre. Seuls les compteurs ayant publié des données ces 7 derniers jours sont proposés, triés par distance à votre domicile. Les données sont publiées avec 8 à 30 h de retard.",
+        "description": "Choisissez les compteurs à suivre. Seuls les compteurs ayant publié des données ces 7 derniers jours sont proposés, triés par distance à votre domicile. Le total d'une journée est publié le lendemain soir.",
         "data": {
           "counters": "Compteurs",
           "backfill_days": "Historique à importer"
         },
         "data_description": {
-          "counters": "Un appareil et trois capteurs seront créés par compteur.",
-          "backfill_days": "Nombre de jours de comptages horaires importés dans les statistiques lors du premier chargement."
+          "counters": "Un appareil et un capteur (total du dernier jour publié) seront créés par compteur.",
+          "backfill_days": "Nombre de jours de totaux journaliers importés dans les statistiques. L'historique est relu à chaque démarrage."
         }
       }
     },
@@ -31,8 +31,8 @@
           "backfill_days": "Historique à importer"
         },
         "data_description": {
-          "counters": "Un appareil et trois capteurs seront créés par compteur.",
-          "backfill_days": "Nombre de jours de comptages horaires importés dans les statistiques lors du premier chargement."
+          "counters": "Un appareil et un capteur (total du dernier jour publié) seront créés par compteur.",
+          "backfill_days": "Nombre de jours de totaux journaliers importés dans les statistiques. L'historique est relu à chaque démarrage."
         }
       }
     },
@@ -46,23 +46,12 @@
   "entity": {
     "sensor": {
       "last_complete_day": {
-        "name": "Dernier jour complet",
+        "name": "Dernier jour",
         "state_attributes": {
           "date": {
             "name": "Date"
           }
         }
-      },
-      "last_hour": {
-        "name": "Dernière heure publiée",
-        "state_attributes": {
-          "observed_at": {
-            "name": "Heure observée"
-          }
-        }
-      },
-      "last_observed": {
-        "name": "Dernière donnée"
       }
     }
   }
